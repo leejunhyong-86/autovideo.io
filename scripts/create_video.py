@@ -36,10 +36,16 @@ def create_video_from_images():
     
     # 이미지 경로 확인
     valid_images = []
+    print(f"[DEBUG] 이미지 경로 검증 시작, 총 {len(image_paths)}개")
     for img_path in image_paths:
         path = Path(img_path)
-        if path.exists() and path.stat().st_size > 0:
+        exists = path.exists()
+        size = path.stat().st_size if exists else 0
+        print(f"[DEBUG] 이미지: {img_path}, 존재={exists}, 크기={size}")
+        if exists and size > 0:
             valid_images.append(str(path.absolute()))
+    
+    print(f"[DEBUG] 유효한 이미지 수: {len(valid_images)}")
     
     if not valid_images:
         print("❌ 유효한 이미지가 없습니다.")

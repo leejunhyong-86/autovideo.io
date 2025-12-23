@@ -18,8 +18,10 @@ UNSPLASH_ACCESS_KEY = get_env_var("UNSPLASH_ACCESS_KEY", "")
 try:
     from PIL import Image, ImageDraw, ImageFont
     HAS_PIL = True
-except ImportError:
+    print(f"✅ PIL/Pillow 로드 성공")
+except ImportError as e:
     HAS_PIL = False
+    print(f"❌ PIL/Pillow 로드 실패: {e}")
 
 
 def download_image(url, filepath):
@@ -35,13 +37,18 @@ def download_image(url, filepath):
 
 def create_text_image(text, width=1080, height=1920, output_path=None):
     """텍스트 기반 이미지 생성 (fallback)"""
+    print(f"  [DEBUG] create_text_image 호출됨, HAS_PIL={HAS_PIL}")
+    
     if not HAS_PIL:
+        print(f"  [DEBUG] PIL 없음, 이미지 생성 불가")
         return None
     
     try:
         # 이미지 생성
+        print(f"  [DEBUG] 이미지 객체 생성 중...")
         img = Image.new('RGB', (width, height), color=(30, 30, 50))
         draw = ImageDraw.Draw(img)
+        print(f"  [DEBUG] 이미지 객체 생성 완료")
         
         # 폰트 설정 (기본 폰트 사용)
         font_size = 60
@@ -55,21 +62,36 @@ def create_text_image(text, width=1080, height=1920, output_path=None):
             "/System/Library/Fonts/Arial.ttf",
         ]
         
+        print(f"  [DEBUG] 폰트 검색 시작...")
         for font_path in font_paths:
             try:
                 if os.path.exists(font_path):
                     font = ImageFont.truetype(font_path, font_size)
+                    print(f"  [DEBUG] 폰트 발견: {font_path}")
                     break
-            except:
+            except Exception as fe:
+                print(f"  [DEBUG] 폰트 로드 실패 {font_path}: {fe}")
                 continue
         
         # 폰트를 찾지 못한 경우 기본 폰트 사용
         if font is None:
+            print(f"  [DEBUG] 시스템 폰트 없음, 기본 폰트 사용")
             try:
                 font = ImageFont.load_default()
                 font_size = 20  # 기본 폰트는 작음
-            except:
+                print(f"  [DEBUG] 기본 폰트 로드 성공")
+            except Exception as de:
+                print(f"  [DEBUG] 기본 폰트 로드 실패: {de}")
                 font = None
+        
+        # 폰트가 여전히 없으면 단순 이미지만 저장
+        if font is None:
+            print(f"  [DEBUG] 폰트 없이 단색 이미지 저장")
+            if output_path:
+                img.save(output_path, 'JPEG', quality=85)
+                print(f"  [DEBUG] 단색 이미지 저장 완료: {output_path}")
+                return str(output_path)
+            return img
         
         # 텍스트 줄바꿈 처리
         words = text.split()
@@ -92,6 +114,8 @@ def create_text_image(text, width=1080, height=1920, output_path=None):
         if current_line:
             lines.append(' '.join(current_line))
         
+        print(f"  [DEBUG] 텍스트 라인 수: {len(lines)}")
+        
         # 텍스트 그리기 (중앙 정렬)
         total_height = len(lines) * 80
         start_y = (height - total_height) // 2
@@ -103,17 +127,28 @@ def create_text_image(text, width=1080, height=1920, output_path=None):
             y = start_y + i * 80
             
             # 그림자 효과
-            draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0, 180))
+            draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0))
             draw.text((x, y), line, font=font, fill=(255, 255, 255))
         
         # 이미지 저장
         if output_path:
-            img.save(output_path, 'JPEG', quality=85)
-            return str(output_path)
+            output_path_str = str(output_path)
+            print(f"  [DEBUG] 이미지 저장 시도: {output_path_str}")
+            img.save(output_path_str, 'JPEG', quality=85)
+            print(f"  [DEBUG] 이미지 저장 완료: {output_path_str}")
+            # 저장 후 파일 확인
+            if os.path.exists(output_path_str):
+                file_size = os.path.getsize(output_path_str)
+                print(f"  [DEBUG] 저장된 파일 크기: {file_size} bytes")
+            else:
+                print(f"  [DEBUG] 저장 후 파일이 존재하지 않음!")
+            return output_path_str
         
         return img
     except Exception as e:
+        import traceback
         print(f"  ⚠️ 텍스트 이미지 생성 실패: {e}")
+        print(f"  [DEBUG] 상세 오류: {traceback.format_exc()}")
         return None
 
 
@@ -185,7 +220,7 @@ def generate_images():
         # 다운로드 실패 시 텍스트 기반 이미지 생성 (fallback)
         if not success:
             print(f"  🔄 텍스트 기반 이미지 생성 시도...")
-            result = create_text_image(prompt, width=1080, height=1920, output_path=image_path)
+            result = create_text_image(prompt, width=1080, height=1920, output_path=str(image_path))
             if result:
                 image_paths.append(str(image_path))
                 print(f"  ✅ {image_filename} 생성 완료 (텍스트 기반)")
