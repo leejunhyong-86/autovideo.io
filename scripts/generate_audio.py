@@ -1,7 +1,15 @@
 """ElevenLabs TTS를 사용한 음성 생성"""
 import requests
 import os
+import sys
 from pathlib import Path
+
+# 프로젝트 루트를 sys.path에 추가
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from scripts.utils import get_output_dir, load_metadata, get_env_var, save_metadata
 
 ELEVENLABS_API_KEY = get_env_var("ELEVENLABS_API_KEY", "")

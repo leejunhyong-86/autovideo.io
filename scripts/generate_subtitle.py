@@ -1,7 +1,15 @@
 """Whisper를 사용한 자막 생성"""
 import os
+import sys
 import subprocess
 from pathlib import Path
+
+# 프로젝트 루트를 sys.path에 추가
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 from scripts.utils import get_output_dir, load_metadata, get_env_var, save_metadata
 
 OPENAI_API_KEY = get_env_var("OPENAI_API_KEY", "")

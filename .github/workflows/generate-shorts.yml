@@ -41,6 +41,8 @@ jobs:
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           TOPIC: ${{ inputs.topic }}
+          PYTHONPATH: ${{ github.workspace }}
+        working-directory: ${{ github.workspace }}
         run: |
           python scripts/generate_prompt.py
           python scripts/generate_image.py

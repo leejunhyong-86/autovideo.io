@@ -1,7 +1,57 @@
 """프롬프트 자동 생성"""
 import json
 import random
+import sys
+import os
 from pathlib import Path
+
+# #region agent log
+try:
+    log_data = {
+        "sessionId": "debug-session",
+        "runId": "run1",
+        "hypothesisId": "A",
+        "location": "generate_prompt.py:8",
+        "message": "Before sys.path modification",
+        "data": {
+            "cwd": os.getcwd(),
+            "sys_path": sys.path[:3],
+            "script_path": __file__,
+            "script_dir": os.path.dirname(os.path.abspath(__file__))
+        },
+        "timestamp": int(os.path.getmtime(__file__) * 1000) if os.path.exists(__file__) else 0
+    }
+    with open(r"c:\practice\autovideo\.cursor\debug.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+except: pass
+# #endregion
+
+# 프로젝트 루트를 sys.path에 추가
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+# #region agent log
+try:
+    log_data = {
+        "sessionId": "debug-session",
+        "runId": "run1",
+        "hypothesisId": "A",
+        "location": "generate_prompt.py:25",
+        "message": "After sys.path modification",
+        "data": {
+            "project_root": project_root,
+            "project_root_in_path": project_root in sys.path,
+            "sys_path": sys.path[:3]
+        },
+        "timestamp": int(os.path.getmtime(__file__) * 1000) if os.path.exists(__file__) else 0
+    }
+    with open(r"c:\practice\autovideo\.cursor\debug.log", "a", encoding="utf-8") as f:
+        f.write(json.dumps(log_data, ensure_ascii=False) + "\n")
+except: pass
+# #endregion
+
 from scripts.utils import get_output_dir, save_metadata, get_env_var, load_metadata
 
 # 주제 템플릿
