@@ -1,0 +1,25 @@
+# 숏츠 영상 자동화 설정
+
+# 영상 설정
+video:
+  width: 1080
+  height: 1920
+  fps: 30
+  image_duration: 3  # 각 이미지당 초
+
+# 자막 설정
+subtitle:
+  font_size: 24
+  position: bottom  # top, center, bottom
+  margin_bottom: 100
+
+# 음성 설정
+audio:
+  language: ko
+  speed: 1.0
+
+# 출력 설정
+output:
+  format: mp4
+  quality: high  # high, medium, low
+

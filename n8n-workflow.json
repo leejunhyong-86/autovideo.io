@@ -1,0 +1,289 @@
+{
+  "name": "영상 자동 생성 (Creatomate + Unsplash)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger",
+      "name": "수동 실행",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"brandName\": \"TechFlow\",\n  \"productName\": \"스마트 워치 프로\",\n  \"tagline\": \"당신의 일상을 스마트하게\",\n  \"searchKeyword\": \"smartwatch technology\",\n  \"slides\": [\n    {\n      \"title\": \"건강 모니터링\",\n      \"description\": \"24시간 심박수, 수면, 스트레스 추적\"\n    },\n    {\n      \"title\": \"스마트 알림\",\n      \"description\": \"모든 알림을 손목에서 확인\"\n    },\n    {\n      \"title\": \"7일 배터리\",\n      \"description\": \"한 번 충전으로 일주일 사용\"\n    }\n  ],\n  \"ctaText\": \"지금 주문하기\",\n  \"primaryColor\": \"#00d9ff\",\n  \"backgroundColor\": \"#0a0a0f\"\n}",
+        "options": {}
+      },
+      "id": "set-data",
+      "name": "영상 데이터 설정",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.unsplash.com/photos/random",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.searchKeyword }}"
+            },
+            {
+              "name": "orientation",
+              "value": "portrait"
+            },
+            {
+              "name": "count",
+              "value": "3"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "unsplash",
+      "name": "Unsplash 이미지 검색",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "UNSPLASH_CREDENTIAL_ID",
+          "name": "Unsplash API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 이전 노드들의 데이터 결합\nconst videoData = $('영상 데이터 설정').first().json;\nconst images = $('Unsplash 이미지 검색').first().json;\n\n// 이미지 URL 추출 (3개)\nconst imageUrls = Array.isArray(images) \n  ? images.map(img => img.urls.regular)\n  : [images.urls.regular];\n\n// Creatomate API 요청 데이터 구성\nconst renderData = {\n  template_id: \"YOUR_TEMPLATE_ID\", // Creatomate에서 생성한 템플릿 ID로 교체\n  modifications: {\n    \"Brand-Name\": videoData.brandName,\n    \"Product-Name\": videoData.productName,\n    \"Tagline\": videoData.tagline,\n    \"Slide1-Title\": videoData.slides[0]?.title || \"\",\n    \"Slide1-Description\": videoData.slides[0]?.description || \"\",\n    \"Slide2-Title\": videoData.slides[1]?.title || \"\",\n    \"Slide2-Description\": videoData.slides[1]?.description || \"\",\n    \"Slide3-Title\": videoData.slides[2]?.title || \"\",\n    \"Slide3-Description\": videoData.slides[2]?.description || \"\",\n    \"CTA-Text\": videoData.ctaText,\n    \"Primary-Color\": videoData.primaryColor,\n    \"Background-Color\": videoData.backgroundColor,\n    \"Image1\": imageUrls[0] || \"\",\n    \"Image2\": imageUrls[1] || imageUrls[0] || \"\",\n    \"Image3\": imageUrls[2] || imageUrls[0] || \"\"\n  }\n};\n\nreturn { json: renderData };"
+      },
+      "id": "prepare-data",
+      "name": "데이터 가공",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.creatomate.com/v1/renders",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "creatomate-render",
+      "name": "Creatomate 영상 생성",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CREATOMATE_CREDENTIAL_ID",
+          "name": "Creatomate API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 60,
+        "unit": "seconds"
+      },
+      "id": "wait",
+      "name": "렌더링 대기 (60초)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.creatomate.com/v1/renders/{{ $('Creatomate 영상 생성').first().json[0].id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "check-status",
+      "name": "렌더링 상태 확인",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CREATOMATE_CREDENTIAL_ID",
+          "name": "Creatomate API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "succeeded",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-complete",
+      "name": "완료 여부 확인",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1540, 0]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"success\": true,\n  \"message\": \"영상 생성 완료!\",\n  \"videoUrl\": \"{{ $json.url }}\",\n  \"renderId\": \"{{ $json.id }}\",\n  \"duration\": \"{{ $json.duration }}초\"\n}",
+        "options": {}
+      },
+      "id": "success-output",
+      "name": "성공 결과",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1760, -100]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"success\": false,\n  \"message\": \"영상 렌더링 중... 잠시 후 다시 확인하세요.\",\n  \"status\": \"{{ $json.status }}\",\n  \"renderId\": \"{{ $json.id }}\"\n}",
+        "options": {}
+      },
+      "id": "pending-output",
+      "name": "대기중 결과",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1760, 100]
+    }
+  ],
+  "connections": {
+    "수동 실행": {
+      "main": [
+        [
+          {
+            "node": "영상 데이터 설정",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "영상 데이터 설정": {
+      "main": [
+        [
+          {
+            "node": "Unsplash 이미지 검색",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unsplash 이미지 검색": {
+      "main": [
+        [
+          {
+            "node": "데이터 가공",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "데이터 가공": {
+      "main": [
+        [
+          {
+            "node": "Creatomate 영상 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Creatomate 영상 생성": {
+      "main": [
+        [
+          {
+            "node": "렌더링 대기 (60초)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "렌더링 대기 (60초)": {
+      "main": [
+        [
+          {
+            "node": "렌더링 상태 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "렌더링 상태 확인": {
+      "main": [
+        [
+          {
+            "node": "완료 여부 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "완료 여부 확인": {
+      "main": [
+        [
+          {
+            "node": "성공 결과",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "대기중 결과",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "영상 자동화"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}
+
