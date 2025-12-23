@@ -35,13 +35,64 @@ def download_image(url, filepath):
     return filepath
 
 
+def create_image_with_ffmpeg(text, width=1080, height=1920, output_path=None):
+    """FFmpeg를 사용한 이미지 생성 (가장 안정적인 fallback)"""
+    import subprocess
+    
+    if not output_path:
+        return None
+    
+    output_path_str = str(output_path)
+    
+    # 텍스트를 줄여서 표시 (FFmpeg drawtext 제한)
+    short_text = text[:50].replace("'", "").replace('"', '').replace(':', ' ')
+    
+    try:
+        # FFmpeg로 단색 배경 + 텍스트 이미지 생성
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "lavfi",
+            "-i", f"color=c=#1e1e32:s={width}x{height}:d=1",
+            "-vframes", "1",
+            "-vf", f"drawtext=text='{short_text}':fontsize=48:fontcolor=white:x=(w-text_w)/2:y=(h-text_h)/2",
+            output_path_str
+        ]
+        
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0 and os.path.exists(output_path_str) and os.path.getsize(output_path_str) > 0:
+            print(f"  [DEBUG] FFmpeg 이미지 생성 성공: {output_path_str}")
+            return output_path_str
+        else:
+            print(f"  [DEBUG] FFmpeg 이미지 생성 실패: {result.stderr}")
+            
+            # drawtext 없이 단색 이미지만 생성 시도
+            cmd_simple = [
+                "ffmpeg", "-y",
+                "-f", "lavfi",
+                "-i", f"color=c=#1e1e32:s={width}x{height}:d=1",
+                "-vframes", "1",
+                output_path_str
+            ]
+            result2 = subprocess.run(cmd_simple, capture_output=True, text=True, timeout=30)
+            
+            if result2.returncode == 0 and os.path.exists(output_path_str) and os.path.getsize(output_path_str) > 0:
+                print(f"  [DEBUG] FFmpeg 단색 이미지 생성 성공: {output_path_str}")
+                return output_path_str
+            
+    except Exception as e:
+        print(f"  [DEBUG] FFmpeg 이미지 생성 오류: {e}")
+    
+    return None
+
+
 def create_text_image(text, width=1080, height=1920, output_path=None):
-    """텍스트 기반 이미지 생성 (fallback)"""
+    """텍스트 기반 이미지 생성 (PIL fallback)"""
     print(f"  [DEBUG] create_text_image 호출됨, HAS_PIL={HAS_PIL}")
     
     if not HAS_PIL:
-        print(f"  [DEBUG] PIL 없음, 이미지 생성 불가")
-        return None
+        print(f"  [DEBUG] PIL 없음, FFmpeg fallback 시도")
+        return create_image_with_ffmpeg(text, width, height, output_path)
     
     try:
         # 이미지 생성
@@ -219,16 +270,22 @@ def generate_images():
         
         # 다운로드 실패 시 텍스트 기반 이미지 생성 (fallback)
         if not success:
-            print(f"  🔄 텍스트 기반 이미지 생성 시도...")
-            result = create_text_image(prompt, width=1080, height=1920, output_path=str(image_path))
-            if result:
+            print(f"  🔄 Fallback 이미지 생성 시도...")
+            
+            # 1차 시도: FFmpeg로 이미지 생성 (가장 안정적)
+            result = create_image_with_ffmpeg(prompt, width=1080, height=1920, output_path=str(image_path))
+            
+            # 2차 시도: PIL로 이미지 생성
+            if not result:
+                print(f"  🔄 PIL 이미지 생성 시도...")
+                result = create_text_image(prompt, width=1080, height=1920, output_path=str(image_path))
+            
+            if result and os.path.exists(result) and os.path.getsize(result) > 0:
                 image_paths.append(str(image_path))
-                print(f"  ✅ {image_filename} 생성 완료 (텍스트 기반)")
+                print(f"  ✅ {image_filename} 생성 완료 (fallback)")
             else:
-                print(f"  ❌ 이미지 생성 실패, 빈 파일 생성")
-                # 최후의 수단: 빈 파일이라도 생성 (에러 방지)
-                image_path.touch()
-                image_paths.append(str(image_path))
+                print(f"  ❌ 이미지 생성 완전 실패")
+                # 빈 파일은 생성하지 않음 - 유효한 이미지만 추가
     
     # 메타데이터 업데이트
     metadata["image_paths"] = image_paths
