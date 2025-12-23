@@ -115,5 +115,8 @@ def create_video_from_images():
 
 
 if __name__ == "__main__":
-    create_video_from_images()
+    result = create_video_from_images()
+    if not result:
+        print("❌ 영상 생성 실패!")
+        sys.exit(1)
 

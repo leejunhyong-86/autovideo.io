@@ -110,5 +110,8 @@ def generate_audio():
 
 
 if __name__ == "__main__":
-    generate_audio()
+    result = generate_audio()
+    if not result:
+        print("❌ 음성 생성 실패!")
+        sys.exit(1)
 

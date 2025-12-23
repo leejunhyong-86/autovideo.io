@@ -125,5 +125,8 @@ def generate_subtitle():
 
 
 if __name__ == "__main__":
-    generate_subtitle()
+    result = generate_subtitle()
+    if not result:
+        print("❌ 자막 생성 실패!")
+        sys.exit(1)
 

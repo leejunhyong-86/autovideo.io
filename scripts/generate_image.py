@@ -239,5 +239,20 @@ def generate_images():
 
 
 if __name__ == "__main__":
-    generate_images()
+    result = generate_images()
+    if not result or len(result) == 0:
+        print("❌ 이미지 생성 실패!")
+        sys.exit(1)
+    
+    # 유효한 이미지가 있는지 확인
+    valid_count = 0
+    for path in result:
+        if os.path.exists(path) and os.path.getsize(path) > 0:
+            valid_count += 1
+    
+    if valid_count == 0:
+        print("❌ 유효한 이미지가 없습니다!")
+        sys.exit(1)
+    
+    print(f"✅ {valid_count}개의 유효한 이미지 생성 완료")
 

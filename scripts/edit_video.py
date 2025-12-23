@@ -134,5 +134,8 @@ def edit_video():
 
 
 if __name__ == "__main__":
-    edit_video()
+    result = edit_video()
+    if not result:
+        print("❌ 최종 영상 편집 실패!")
+        sys.exit(1)
 
